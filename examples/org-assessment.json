@@ -1,0 +1,13 @@
+{
+  "organization": "Example Digital Service",
+  "context": "A fictional product group moving from individual copilots to governed team delivery.",
+  "scores": {
+    "product": 4,
+    "workflow": 3,
+    "evaluation": 2,
+    "architecture": 3,
+    "platform": 4,
+    "governance": 2,
+    "learning": 3
+  }
+}
