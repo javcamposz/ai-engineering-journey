@@ -16,14 +16,45 @@ pip install -e .
 ai-journey assess examples/org-assessment.json --output roadmap.md
 ```
 
-The command validates a 1-5 score for each capability, calculates a maturity stage, identifies the weakest constraints, and writes a phased roadmap.
+The command validates a 1-5 score for each capability, calculates a maturity stage, identifies which
+capabilities are actually constraining the organization, and writes a phased roadmap.
 
 ```text
 Organization: Example Digital Service
-Maturity: Repeatable (3.0/5.0)
-Priority constraints: Evaluation, Governance, Workflow
+Maturity: Assisted (3.0/5.0 capability average)
+Held below Repeatable by: Evaluation, Governance
+Priority constraints: Evaluation, Governance
 Roadmap written to roadmap.md
 ```
+
+## How The Stage Is Decided
+
+The capability average alone would read this organization as Repeatable. It is reported as Assisted
+because two capabilities sit at 2/5, and an organization is not at a stage its weakest capability
+contradicts. The unit of improvement is the whole path from a user problem to verified production
+behavior, so a strong platform does not buy a stage that evaluation has not reached.
+
+Both numbers are printed, and the roadmap names the capability holding the stage down, so the judgement
+is inspectable and can be challenged rather than taken on trust.
+
+A capability is a **constraint** when it scores below the organization's own average or sits at the lowest
+score in the profile. Every capability that ties at the cutoff is listed. When all seven scores are equal
+there is no bottleneck to rank, and the roadmap says so instead of inventing one.
+
+## Advice Depends On Where A Capability Is
+
+Each capability has three actions, and they are rungs on a ladder rather than a three-month schedule:
+establish, standardise, optimise. A capability joins the ladder at the rung its score has reached and
+climbs one rung per phase.
+
+| Score | Practice reached | First action |
+|---:|---|---|
+| 1-2 | Establish | Put the basic practice in place |
+| 3 | Standardise | Make it consistent across teams |
+| 4-5 | Optimise | Improve it from operational evidence |
+
+A capability at 4/5 is therefore not told to start from the beginning, and a phase with nothing left to
+schedule says so rather than repeating advice the organization has already outgrown.
 
 ## The Seven Capabilities
 
@@ -57,7 +88,9 @@ See [the operating model](docs/operating-model.md) for maturity stages, delivery
 }
 ```
 
-Scores must be integers from 1 to 5 and all seven capabilities are required. The example is fictional.
+Scores must be integers from 1 to 5 and all seven capabilities are required. Every problem in a profile
+is reported in one pass with the capability named, so a profile is corrected in a single edit. An invalid
+profile exits `2`; a valid one exits `0`. The example is fictional.
 
 ## Development
 
