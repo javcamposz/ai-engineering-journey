@@ -20,6 +20,11 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _text(value: object) -> str:
+    """A JSON null is an absent name, not the word None."""
+    return "" if value is None else str(value)
+
+
 def _load(path: Path) -> dict:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -38,8 +43,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         payload = _load(args.input)
         result = assess(
-            str(payload.get("organization", "")),
-            str(payload.get("context", "")),
+            _text(payload.get("organization")),
+            _text(payload.get("context")),
             payload.get("scores", {}),
         )
     except AssessmentError as exc:

@@ -75,3 +75,22 @@ def test_a_uniform_profile_is_described_rather_than_ranked(tmp_path, capsys):
 
     assert main(["assess", str(path), "--output", str(tmp_path / "r.md")]) == 0
     assert "none stand out" in capsys.readouterr().out
+
+
+def test_a_null_organization_is_absent_rather_than_the_word_none(tmp_path, capsys):
+    path = tmp_path / "profile.json"
+    output = tmp_path / "roadmap.md"
+    path.write_text(json.dumps({
+        "organization": None,
+        "context": None,
+        "scores": {key: 3 for key in
+                   ("product", "workflow", "evaluation", "architecture",
+                    "platform", "governance", "learning")},
+    }))
+
+    assert main(["assess", str(path), "--output", str(output)]) == 0
+
+    assert "Organization: Unnamed organization" in capsys.readouterr().out
+    roadmap = output.read_text()
+    assert roadmap.startswith("# AI Engineering Roadmap: Unnamed organization")
+    assert "\nNone\n" not in roadmap

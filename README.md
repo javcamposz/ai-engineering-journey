@@ -29,10 +29,15 @@ Roadmap written to roadmap.md
 
 ## How The Stage Is Decided
 
-The capability average alone would read this organization as Repeatable. It is reported as Assisted
-because two capabilities sit at 2/5, and an organization is not at a stage its weakest capability
-contradicts. The unit of improvement is the whole path from a user problem to verified production
-behavior, so a strong platform does not buy a stage that evaluation has not reached.
+**The stage is the one the weakest capability demonstrates.** It is not a blend of the average and the
+weakest score: each stage in the operating model has exit evidence, and that evidence is per capability.
+An organization cannot claim Repeatable, whose exit evidence is stable evals, while evaluation sits at
+2/5. The capability average alone would read this example as Repeatable; it is reported as Assisted
+because two capabilities sit at 2/5.
+
+This is deliberately blunt. An organization scoring 2 on one capability and 5 on the other six reports the
+same stage as one scoring 2 everywhere, because both are blocked in the same place. The two are told very
+different things by the roadmap, which is where the difference belongs.
 
 Both numbers are printed, and the roadmap names the capability holding the stage down, so the judgement
 is inspectable and can be challenged rather than taken on trust.

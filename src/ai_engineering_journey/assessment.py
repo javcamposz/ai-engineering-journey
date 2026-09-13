@@ -172,11 +172,13 @@ def assess(organization: str, context: str, scores: Mapping[str, object]) -> Ass
     average_stage = _maturity(average)
     weakest = min(validated.values())
 
-    # An organization is not at a stage its weakest capability contradicts. The unit of
-    # improvement is the whole path from user problem to verified behaviour, so a strong
-    # platform does not buy a stage that evaluation has not reached.
-    limited_stage = PILLAR_STAGE[weakest]
-    maturity = min(average_stage, limited_stage, key=STAGES.index)
+    # The stage is the one the weakest capability demonstrates, not a blend. Each stage in
+    # the operating model has exit evidence, and that evidence is per capability: an
+    # organization cannot claim Repeatable, whose exit evidence is stable evals, while
+    # evaluation sits at 2/5. A strong platform does not buy a stage evaluation has not
+    # reached. Taking min() with the average stage would be dead code: a weakest score of w
+    # forces the mean to at least w, so the average stage is never the lower of the two.
+    maturity = PILLAR_STAGE[weakest]
     limiting = tuple(pillar for pillar in PILLARS if validated[pillar] == weakest)
 
     priorities = tuple(

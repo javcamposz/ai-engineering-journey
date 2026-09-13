@@ -185,3 +185,27 @@ def test_the_baseline_table_names_the_practice_each_score_has_reached():
     assert "| Evaluation | 2/5 | Establish |" in report
     assert "| Product | 4/5 | Optimise |" in report
     assert "| Workflow | 3/5 | Standardise |" in report
+
+
+def test_the_stage_is_what_the_weakest_capability_demonstrates():
+    """Not a blend: a weakest score of w forces the mean above w, so the average never wins."""
+    from itertools import product
+
+    from ai_engineering_journey.assessment import PILLAR_STAGE
+
+    for combo in product((1, 3, 5), repeat=len(PILLARS)):
+        result = assess("X", "", dict(zip(PILLARS, combo)))
+        assert result.maturity == PILLAR_STAGE[min(combo)], combo
+
+
+def test_a_strong_average_does_not_buy_a_stage_the_weakest_capability_has_not_reached():
+    lopsided = assess("Lopsided", "", dict(zip(PILLARS, (2, 5, 5, 5, 5, 5, 5))))
+    flat = assess("Flat", "", dict.fromkeys(PILLARS, 2))
+
+    assert lopsided.overall == 4.6
+    assert flat.overall == 2.0
+    assert lopsided.maturity == flat.maturity == "Assisted"
+
+    # The stage is deliberately blunt; the roadmaps are where the two differ.
+    assert lopsided.priorities != flat.priorities
+    assert advice(render_roadmap(lopsided)) != advice(render_roadmap(flat))
