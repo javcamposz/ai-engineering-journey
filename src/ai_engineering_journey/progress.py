@@ -156,28 +156,29 @@ def render_progress(progress: Progress) -> str:
             "",
         ])
 
+    # Every assessment names at least the capabilities at its lowest score, so there is
+    # always something the earlier roadmap asked for.
+    assert before.priorities, "an assessment always names at least one constraint"
+
     lines.extend(["## Did The Plan Land?", ""])
-    if not before.priorities:
-        lines.append("- The earlier assessment named no constraints, so nothing was asked for.")
-    else:
-        for movement in progress.delivered:
+    for movement in progress.delivered:
+        lines.append(
+            f"- **{movement.pillar.title()}** moved {movement.before}/5 to {movement.after}/5"
+            + (f", {movement.practice}." if movement.rung_advanced else ", same practice rung.")
+        )
+    for movement in progress.stalled:
+        asked = ACTIONS[movement.pillar][movement.before_rung]
+        if movement.direction == "regressed":
             lines.append(
-                f"- **{movement.pillar.title()}** moved {movement.before}/5 to {movement.after}/5"
-                + (f", {movement.practice}." if movement.rung_advanced else ", same practice rung.")
+                f"- **{movement.pillar.title()}** was a priority and fell "
+                f"{movement.before}/5 to {movement.after}/5. The roadmap asked: {asked}"
             )
-        for movement in progress.stalled:
-            asked = ACTIONS[movement.pillar][movement.before_rung]
-            if movement.direction == "regressed":
-                lines.append(
-                    f"- **{movement.pillar.title()}** was a priority and fell "
-                    f"{movement.before}/5 to {movement.after}/5. The roadmap asked: {asked}"
-                )
-            else:
-                lines.append(
-                    f"- **{movement.pillar.title()}** was a priority and is unchanged at "
-                    f"{movement.before}/5. The roadmap asked: {asked} Either the work did not "
-                    "happen or the action was the wrong one; both are worth knowing."
-                )
+        else:
+            lines.append(
+                f"- **{movement.pillar.title()}** was a priority and is unchanged at "
+                f"{movement.before}/5. The roadmap asked: {asked} Either the work did not "
+                "happen or the action was the wrong one; both are worth knowing."
+            )
 
     lines.extend(["", "## What It Cost", ""])
     if progress.collateral:
@@ -216,9 +217,10 @@ def render_progress(progress: Progress) -> str:
         "|---|---:|---:|---:|---|---|",
     ])
     for movement in sorted(progress.movements, key=lambda item: (item.delta, PILLARS.index(item.pillar))):
+        change = f"{movement.delta:+d}" if movement.delta else "0"
         lines.append(
             f"| {movement.pillar.title()} | {movement.before}/5 | {movement.after}/5 | "
-            f"{movement.delta:+d}".replace("+0", "0") + f" | {movement.practice} | "
+            f"{change} | {movement.practice} | "
             f"{'yes' if movement.was_prioritised else 'no'} |"
         )
 

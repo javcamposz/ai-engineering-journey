@@ -131,7 +131,9 @@ See [the operating model](docs/operating-model.md) for maturity stages, delivery
 }
 ```
 
-An optional `assessed_on` records when the profile was taken, as `YYYY-MM-DD`.
+An optional `assessed_on` records when the profile was taken, as `YYYY-MM-DD` and only that
+shape. Python's own ISO parser widened in 3.11, so `20260115` would be read on 3.12 and
+rejected on 3.10; the shape is checked before parsing so both supported versions agree.
 
 Scores must be integers from 1 to 5 and all seven capabilities are required. Every problem in a profile
 is reported in one pass with the capability named, so a profile is corrected in a single edit. An invalid

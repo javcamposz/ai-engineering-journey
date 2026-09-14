@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date
 from statistics import mean
@@ -7,6 +8,11 @@ from typing import Mapping
 
 MINIMUM_SCORE = 1
 MAXIMUM_SCORE = 5
+
+# date.fromisoformat accepts the whole ISO 8601 set from Python 3.11, so "20260115" and
+# "2026-W03-4" parse there and are rejected on 3.10. Both are supported, so the shape is
+# checked first and only the documented one reaches the parser.
+ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 PILLARS = (
     "product",
@@ -161,10 +167,15 @@ def assess(
     problems: list[str] = []
     taken_on: date | None = None
     if assessed_on:
-        try:
-            taken_on = date.fromisoformat(assessed_on)
-        except ValueError:
+        if not ISO_DATE.match(assessed_on):
             problems.append(f"assessed_on is {assessed_on!r}; it must be a date as YYYY-MM-DD")
+        else:
+            try:
+                taken_on = date.fromisoformat(assessed_on)
+            except ValueError:
+                problems.append(
+                    f"assessed_on is {assessed_on!r}; that is not a real date"
+                )
     missing = [pillar for pillar in PILLARS if pillar not in scores]
     if missing:
         noun = "capability is" if len(missing) == 1 else "capabilities are"
