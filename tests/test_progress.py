@@ -145,3 +145,36 @@ def test_every_capability_appears_in_the_movement_table():
 
     assert len(rows) == len(PILLARS)
     assert "| 0 |" in report and "| +1 |" in report and "| -1 |" in report
+
+
+def test_the_date_shape_is_enforced_before_parsing():
+    """date.fromisoformat takes the whole ISO 8601 set from 3.11, so 3.10 and 3.12 would disagree."""
+    for value in ("20260115", "2026-W03-4", "15/01/2026", "2026-1-5"):
+        with pytest.raises(AssessmentError, match="it must be a date as YYYY-MM-DD"):
+            assess("X", "", BEFORE, value)
+
+
+def test_a_well_shaped_but_impossible_date_is_rejected_as_such():
+    with pytest.raises(AssessmentError, match="that is not a real date"):
+        assess("X", "", BEFORE, "2026-02-30")
+
+
+def test_the_documented_shape_is_accepted():
+    assert assess("X", "", BEFORE, "2026-01-15").assessed_on.isoformat() == "2026-01-15"
+
+
+def test_an_assessment_always_names_at_least_one_constraint():
+    """The renderer relies on this; a profile with no constraints cannot be produced."""
+    from itertools import product
+
+    for combo in product((1, 3, 5), repeat=len(PILLARS)):
+        assert assess("X", "", dict(zip(PILLARS, combo))).priorities
+
+
+def test_the_change_column_is_formatted_from_the_delta_alone():
+    report = render_progress(progress())
+    rows = [line for line in report.splitlines() if line.startswith("| ") and "/5 |" in line]
+    changes = [row.split("|")[4].strip() for row in rows]
+
+    assert set(changes) == {"0", "+1", "-1"}
+    assert all(not change.startswith("+0") for change in changes)
