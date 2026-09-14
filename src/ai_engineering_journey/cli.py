@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from .assessment import AssessmentError, assess, render_roadmap
+from .progress import compare, render_progress
 
 EXIT_OK = 0
 EXIT_INPUT_ERROR = 2
@@ -17,6 +18,15 @@ def build_parser() -> argparse.ArgumentParser:
     command = subparsers.add_parser("assess", help="assess a JSON capability profile")
     command.add_argument("input", type=Path)
     command.add_argument("--output", type=Path)
+    command.set_defaults(handler=_assess)
+
+    journey = subparsers.add_parser(
+        "progress", help="grade a later assessment against what the earlier roadmap asked for"
+    )
+    journey.add_argument("before", type=Path, help="the earlier capability profile")
+    journey.add_argument("after", type=Path, help="the later capability profile")
+    journey.add_argument("--output", type=Path)
+    journey.set_defaults(handler=_progress)
     return parser
 
 
@@ -38,27 +48,26 @@ def _load(path: Path) -> dict:
     return payload
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    try:
-        payload = _load(args.input)
-        result = assess(
-            _text(payload.get("organization")),
-            _text(payload.get("context")),
-            payload.get("scores", {}),
-        )
-    except AssessmentError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return EXIT_INPUT_ERROR
-    except OSError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return EXIT_INPUT_ERROR
+def _assessment(path: Path):
+    payload = _load(path)
+    return assess(
+        _text(payload.get("organization")),
+        _text(payload.get("context")),
+        payload.get("scores", {}),
+        _text(payload.get("assessed_on")) or None,
+    )
 
-    report = render_roadmap(result)
-    if args.output:
-        args.output.write_text(report, encoding="utf-8")
+
+def _emit(report: str, output: Path | None) -> None:
+    if output:
+        output.write_text(report, encoding="utf-8")
     else:
         print(report)
+
+
+def _assess(args: argparse.Namespace) -> int:
+    result = _assessment(args.input)
+    _emit(render_roadmap(result), args.output)
 
     print(f"Organization: {result.organization}")
     print(f"Maturity: {result.maturity} ({result.overall:.1f}/5.0 capability average)")
@@ -72,3 +81,36 @@ def main(argv: list[str] | None = None) -> int:
     if args.output:
         print(f"Roadmap written to {args.output}")
     return EXIT_OK
+
+
+def _progress(args: argparse.Namespace) -> int:
+    progress = compare(_assessment(args.before), _assessment(args.after))
+    _emit(render_progress(progress), args.output)
+
+    interval = "interval not recorded" if progress.days is None else f"{progress.days} days"
+    print(f"Organization: {progress.after.organization} ({interval})")
+    print(f"Stage: {progress.before.maturity} to {progress.after.maturity}"
+          + ("" if progress.stage_changed else " (unchanged)"))
+    print(f"Priorities delivered: {len(progress.delivered)} of "
+          f"{len(progress.delivered) + len(progress.stalled)}")
+    if progress.stalled:
+        print(f"Stalled: {', '.join(item.pillar.title() for item in progress.stalled)}")
+    if progress.collateral:
+        print(f"Regressed while unattended: "
+              f"{', '.join(item.pillar.title() for item in progress.collateral)}")
+    print("Same bottleneck: " + ("yes" if progress.same_bottleneck else "no"))
+    if args.output:
+        print(f"Progress report written to {args.output}")
+    return EXIT_OK
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    try:
+        return args.handler(args)
+    except AssessmentError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_INPUT_ERROR
+    except OSError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_INPUT_ERROR

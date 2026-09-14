@@ -94,3 +94,53 @@ def test_a_null_organization_is_absent_rather_than_the_word_none(tmp_path, capsy
     roadmap = output.read_text()
     assert roadmap.startswith("# AI Engineering Roadmap: Unnamed organization")
     assert "\nNone\n" not in roadmap
+
+
+Q2 = ROOT / "examples/org-assessment-q2.json"
+
+
+def test_progress_grades_the_earlier_roadmap(tmp_path, capsys):
+    output = tmp_path / "progress.md"
+
+    assert main(["progress", str(EXAMPLE), str(Q2), "--output", str(output)]) == 0
+
+    out = capsys.readouterr().out
+    assert "Organization: Example Digital Service (95 days)" in out
+    assert "Stage: Assisted to Assisted (unchanged)" in out
+    assert "Priorities delivered: 1 of 2" in out
+    assert "Stalled: Governance" in out
+    assert "Regressed while unattended: Workflow" in out
+    assert "Same bottleneck: no" in out
+    assert output.read_text().startswith("# AI Engineering Progress:")
+
+
+def test_progress_refuses_profiles_in_the_wrong_order(capsys):
+    assert main(["progress", str(Q2), str(EXAMPLE)]) == 2
+    assert "pass the earlier assessment first" in capsys.readouterr().err
+
+
+def test_an_unreadable_date_is_reported_with_the_other_problems(tmp_path, capsys):
+    path = tmp_path / "profile.json"
+    path.write_text(json.dumps({
+        "organization": "X",
+        "assessed_on": "15/01/2026",
+        "scores": {key: 3 for key in
+                   ("product", "workflow", "evaluation", "architecture",
+                    "platform", "governance", "learning")},
+    }))
+
+    assert main(["assess", str(path)]) == 2
+    assert "assessed_on is '15/01/2026'; it must be a date as YYYY-MM-DD" in capsys.readouterr().err
+
+
+def test_a_profile_without_a_date_still_assesses(tmp_path, capsys):
+    path = tmp_path / "profile.json"
+    path.write_text(json.dumps({
+        "organization": "X",
+        "scores": {key: 3 for key in
+                   ("product", "workflow", "evaluation", "architecture",
+                    "platform", "governance", "learning")},
+    }))
+
+    assert main(["assess", str(path), "--output", str(tmp_path / "r.md")]) == 0
+    assert "Maturity: Repeatable" in capsys.readouterr().out

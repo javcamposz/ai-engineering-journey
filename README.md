@@ -27,6 +27,44 @@ Priority constraints: Evaluation, Governance
 Roadmap written to roadmap.md
 ```
 
+## Grade The Journey, Not Just The Snapshot
+
+The tool does not only record where an organization is; it issues a plan. A quarter later the
+question is not only what moved, but whether the capabilities the roadmap prioritised are the ones
+that moved, and what was given up elsewhere to move them.
+
+```bash
+ai-journey progress examples/org-assessment.json examples/org-assessment-q2.json
+```
+
+```text
+Organization: Example Digital Service (95 days)
+Stage: Assisted to Assisted (unchanged)
+Priorities delivered: 1 of 2
+Stalled: Governance
+Regressed while unattended: Workflow
+Same bottleneck: no
+```
+
+The report leads with **Did The Plan Land?**, and a priority that did not move is quoted back the
+action it was given:
+
+> **Governance** was a priority and is unchanged at 2/5. The roadmap asked: Tier use cases by impact
+> and assign accountable decision owners. Either the work did not happen or the action was the wrong
+> one; both are worth knowing.
+
+It then names what focus cost — a capability that fell while attention was elsewhere — and answers
+whether the binding constraint is still the binding constraint. In the example the stage did not move
+even though evaluation improved, because workflow slipped into the gap evaluation left:
+
+> No. It was Evaluation, Governance; it is now Workflow, Governance at 2/5. The stage did not move,
+> because one constraint replaced another.
+
+Nothing is stored between runs. The earlier roadmap is fully derivable from the earlier profile, so
+the comparison reconstructs exactly what was asked for. Add `assessed_on` to a profile and the
+interval is measured rather than guessed; profiles passed in the wrong order are refused rather than
+silently inverted.
+
 ## How The Stage Is Decided
 
 **The stage is the one the weakest capability demonstrates.** It is not a blend of the average and the
@@ -92,6 +130,8 @@ See [the operating model](docs/operating-model.md) for maturity stages, delivery
   }
 }
 ```
+
+An optional `assessed_on` records when the profile was taken, as `YYYY-MM-DD`.
 
 Scores must be integers from 1 to 5 and all seven capabilities are required. Every problem in a profile
 is reported in one pass with the capability named, so a profile is corrected in a single edit. An invalid

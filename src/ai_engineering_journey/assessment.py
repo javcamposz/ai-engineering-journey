@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from statistics import mean
 from typing import Mapping
 
@@ -86,6 +87,17 @@ class Assessment:
     priorities: tuple[str, ...]
     average_stage: str
     limiting_pillars: tuple[str, ...]
+    assessed_on: date | None = None
+
+    @property
+    def bottleneck(self) -> tuple[str, ...]:
+        """The capabilities at the lowest score, which is what sets the stage.
+
+        Distinct from limiting_pillars, which is empty when the average agrees with the
+        weakest capability. Something is always the bottleneck; it is not always a gap.
+        """
+        lowest = min(self.scores.values())
+        return tuple(pillar for pillar in PILLARS if self.scores[pillar] == lowest)
 
     @property
     def is_limited(self) -> bool:
@@ -140,8 +152,19 @@ def _constraints(scores: dict[str, int]) -> tuple[str, ...]:
     )
 
 
-def assess(organization: str, context: str, scores: Mapping[str, object]) -> Assessment:
+def assess(
+    organization: str,
+    context: str,
+    scores: Mapping[str, object],
+    assessed_on: str | None = None,
+) -> Assessment:
     problems: list[str] = []
+    taken_on: date | None = None
+    if assessed_on:
+        try:
+            taken_on = date.fromisoformat(assessed_on)
+        except ValueError:
+            problems.append(f"assessed_on is {assessed_on!r}; it must be a date as YYYY-MM-DD")
     missing = [pillar for pillar in PILLARS if pillar not in scores]
     if missing:
         noun = "capability is" if len(missing) == 1 else "capabilities are"
@@ -193,6 +216,7 @@ def assess(organization: str, context: str, scores: Mapping[str, object]) -> Ass
         priorities=priorities,
         average_stage=average_stage,
         limiting_pillars=limiting if maturity != average_stage else (),
+        assessed_on=taken_on,
     )
 
 
