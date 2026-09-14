@@ -1,0 +1,14 @@
+{
+  "organization": "Example Digital Service",
+  "context": "The same fictional product group one quarter after the first assessment.",
+  "assessed_on": "2026-04-20",
+  "scores": {
+    "product": 4,
+    "workflow": 2,
+    "evaluation": 3,
+    "architecture": 3,
+    "platform": 4,
+    "governance": 2,
+    "learning": 3
+  }
+}
