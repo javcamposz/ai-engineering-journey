@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from .assessment import AssessmentError, assess, render_roadmap
+from .pipeline import assess_readiness, render_readiness
 from .progress import compare, render_progress
 
 EXIT_OK = 0
@@ -27,6 +28,14 @@ def build_parser() -> argparse.ArgumentParser:
     journey.add_argument("after", type=Path, help="the later capability profile")
     journey.add_argument("--output", type=Path)
     journey.set_defaults(handler=_progress)
+
+    readiness = subparsers.add_parser(
+        "readiness",
+        help="report how far down the UX bug automation pipeline a profile can run",
+    )
+    readiness.add_argument("input", type=Path)
+    readiness.add_argument("--output", type=Path)
+    readiness.set_defaults(handler=_readiness)
     return parser
 
 
@@ -101,6 +110,26 @@ def _progress(args: argparse.Namespace) -> int:
     print("Same bottleneck: " + ("yes" if progress.same_bottleneck else "no"))
     if args.output:
         print(f"Progress report written to {args.output}")
+    return EXIT_OK
+
+
+def _readiness(args: argparse.Namespace) -> int:
+    readiness = assess_readiness(_assessment(args.input))
+    _emit(render_readiness(readiness), args.output)
+
+    total = len(readiness.stages)
+    print(f"Organization: {readiness.assessment.organization}")
+    print(f"Pipeline: UX bug automation ({total} stages)")
+    if readiness.stops_at is None:
+        print(f"Reach: all {total} stages")
+    else:
+        print(f"Reach: {readiness.reach} of {total}, stopping at {readiness.stops_at.stage.name}")
+        print(f"Blocked by: {readiness.stops_at.describe_shortfalls()}")
+    if readiness.resourced_but_unreachable:
+        names = ", ".join(s.stage.name for s in readiness.resourced_but_unreachable)
+        print(f"Resourced but unreachable: {names}")
+    if args.output:
+        print(f"Readiness report written to {args.output}")
     return EXIT_OK
 
 

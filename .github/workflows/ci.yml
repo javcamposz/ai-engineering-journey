@@ -24,6 +24,8 @@ jobs:
       - run: pytest
       - run: ai-journey assess examples/org-assessment.json --output roadmap.md
       - run: ai-journey progress examples/org-assessment.json examples/org-assessment-q2.json --output progress.md
+      - run: ai-journey readiness examples/org-assessment.json --output readiness.md
+      - run: ai-journey readiness examples/org-assessment-q2.json --output /dev/null
       - name: profiles in the wrong order must exit non-zero
         run: |
           if ai-journey progress examples/org-assessment-q2.json examples/org-assessment.json; then
