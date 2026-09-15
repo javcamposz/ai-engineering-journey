@@ -65,6 +65,41 @@ the comparison reconstructs exactly what was asked for. Add `assessed_on` to a p
 interval is measured rather than guessed; profiles passed in the wrong order are refused rather than
 silently inverted.
 
+## How Far Can You Actually Run A Real Workflow?
+
+A stage and a roadmap describe capability in the abstract. [The UX bug automation worked
+example](docs/ux-bug-automation.md) takes one bounded workflow end to end — telemetry to a shipped
+fix that feeds the next eval — and each of its six stages declares the capability level it needs.
+
+```bash
+ai-journey readiness examples/org-assessment.json
+```
+
+```text
+Organization: Example Digital Service
+Pipeline: UX bug automation (6 stages)
+Reach: 3 of 6, stopping at Verify
+Blocked by: Evaluation 2/5, needs 4/5
+```
+
+**Reach is what the pipeline can do, not what its best-resourced stage could do.** The stages consume
+each other's output, so a blocked stage makes everything after it unreachable however well resourced
+those stages are. An organization with strong governance and weak evaluation does not get to ship
+autonomously and skip verification; it gets to stop at verification. The report names stages that
+would run today if the pipeline reached them, because effort spent on those buys nothing.
+
+This turns "Evaluation is your constraint" into what the constraint costs: that organization can
+detect, reproduce and propose fixes, nothing ships without a person reading every change, and the
+Learn loop never closes.
+
+The two example profiles show the same thing from the other direction. Between them evaluation
+improved and workflow regressed, and reach fell from three stages to one:
+
+```text
+Reach: 1 of 6, stopping at Reproduce
+Blocked by: Workflow 2/5, needs 3/5
+```
+
 ## How The Stage Is Decided
 
 **The stage is the one the weakest capability demonstrates.** It is not a blend of the average and the
