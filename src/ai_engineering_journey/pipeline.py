@@ -166,6 +166,30 @@ class Readiness:
     def resourced_but_unreachable(self) -> tuple[StageReadiness, ...]:
         return tuple(stage for stage in self.unreachable if stage.is_resourced)
 
+    def reach_if(self, pillar: str, score: int) -> int:
+        """Reach the pipeline would have if one capability were raised to `score`.
+
+        The stage count a capability blocks is not what raising it buys. Another capability
+        usually stops the pipeline first, and reporting the count alone recommends an
+        investment against the number this module exists to argue against.
+        """
+        lifted = dict(self.assessment.scores)
+        lifted[pillar] = max(lifted[pillar], score)
+        stages = tuple(StageReadiness(item.stage, lifted) for item in self.stages)
+        return Readiness(assessment=self.assessment, stages=stages).reach
+
+    def highest_requirement(self, pillar: str) -> int:
+        """The level the most demanding stage asks of this capability."""
+        return max(
+            (
+                requirement.minimum
+                for item in self.stages
+                for requirement in item.stage.requires
+                if requirement.pillar == pillar
+            ),
+            default=0,
+        )
+
     @property
     def blocking_pillars(self) -> tuple[tuple[str, int], ...]:
         """Capabilities that block stages, and how many each blocks, worst first."""
@@ -253,10 +277,30 @@ def render_readiness(readiness: Readiness, pipeline_name: str = "UX bug automati
         for pillar, count in readiness.blocking_pillars:
             lines.append(f"| {pillar.title()} | {result.scores[pillar]}/5 | {count} |")
         worst, count = readiness.blocking_pillars[0]
+        target = readiness.highest_requirement(worst)
+        gained = readiness.reach_if(worst, target)
+        moved = (
+            f"would move reach from {readiness.reach} to {gained} of {total}"
+            if gained > readiness.reach
+            else f"would not move reach past {readiness.reach} of {total} on its own"
+        )
+        after = Readiness(
+            assessment=result,
+            stages=tuple(
+                StageReadiness(item.stage, {**result.scores, worst: max(result.scores[worst], target)})
+                for item in readiness.stages
+            ),
+        ).stops_at
+        next_block = (
+            f", where {after.describe_shortfalls()} stops it"
+            if after is not None else ", completing the pipeline"
+        )
         lines.extend([
             "",
-            f"{worst.title()} at {result.scores[worst]}/5 blocks {count} of {total} stages. "
-            "Run `ai-journey assess` on the same profile for the actions that raise it.",
+            f"{worst.title()} at {result.scores[worst]}/5 blocks {count} of {total} stages, but "
+            f"blocking a stage and opening one are different things. Raising it to {target}/5 "
+            f"{moved}{next_block}. Run `ai-journey assess` on the same profile for the actions "
+            "that raise it.",
         ])
     else:
         lines.append("- No capability blocks a stage.")

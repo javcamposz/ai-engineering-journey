@@ -92,6 +92,11 @@ This turns "Evaluation is your constraint" into what the constraint costs: that 
 detect, reproduce and propose fixes, nothing ships without a person reading every change, and the
 Learn loop never closes.
 
+It also says what fixing it buys, which is not the same as the stage count it blocks:
+
+> Evaluation at 2/5 blocks 3 of 6 stages, but blocking a stage and opening one are different things.
+> Raising it to 4/5 would move reach from 3 to 4 of 6, where Governance 2/5, needs 3/5 stops it.
+
 The two example profiles show the same thing from the other direction. Between them evaluation
 improved and workflow regressed, and reach fell from three stages to one:
 
