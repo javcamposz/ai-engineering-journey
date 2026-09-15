@@ -56,10 +56,27 @@ def test_every_stage_states_a_gate_and_the_evidence_for_it():
 
 
 def test_the_documented_pipeline_matches_the_one_the_tool_reads():
-    doc = (ROOT / "docs/ux-bug-automation.md").read_text()
+    """Headings, loops, and the thresholds themselves. The prose is the reference."""
+    import re
 
-    for index, stage in enumerate(UX_BUG_PIPELINE, start=1):
+    doc = (ROOT / "docs/ux-bug-automation.md").read_text()
+    sections = re.split(r"^### \d+\. ", doc, flags=re.M)[1:]
+    assert len(sections) == len(UX_BUG_PIPELINE)
+
+    for index, (stage, section) in enumerate(zip(UX_BUG_PIPELINE, sections), start=1):
         assert f"### {index}. {stage.name} — the {stage.loop} loop" in doc, stage.name
+
+        needs = [line for line in section.splitlines() if line.startswith("**Needs:**")]
+        assert len(needs) == 1, f"{stage.name} must state its requirements once"
+        for requirement in stage.requires:
+            assert f"{requirement.pillar.title()} {requirement.minimum}" in needs[0], (
+                stage.name, requirement.pillar
+            )
+        for pillar in PILLARS:
+            if pillar not in {r.pillar for r in stage.requires}:
+                assert pillar.title() not in needs[0], (
+                    f"{stage.name} documents {pillar} but does not require it"
+                )
 
 
 # --- reach ---
@@ -126,7 +143,7 @@ def test_the_report_leads_with_reach_and_what_stops_it():
 
     assert "**Reach:** 3 of 6 stages, stopping at Verify" in report
     assert "**Verify**, in the Verify loop, is blocked by Evaluation 2/5, needs 4/5." in report
-    assert "Evaluation at 2/5 blocks 3 of 6 stages." in report
+    assert "Evaluation at 2/5 blocks 3 of 6 stages, but" in report
 
 
 def test_the_report_names_stages_that_would_run_if_reached():
@@ -203,3 +220,43 @@ def test_a_custom_pipeline_can_be_assessed():
 def test_requirements_compare_against_the_assessed_scores():
     assert Requirement("workflow", 3).met_by(SCORES)
     assert not Requirement("evaluation", 3).met_by(SCORES)
+
+
+def test_the_report_says_what_raising_the_blocker_actually_buys():
+    """Counting blocked stages recommends against the number this module argues against."""
+    report = render_readiness(readiness())
+
+    assert "blocking a stage and opening one are different things" in report
+    assert "Raising it to 4/5 would move reach from 3 to 4 of 6" in report
+    assert "where Governance 2/5, needs 3/5 stops it" in report
+
+
+def test_reach_if_reports_the_pipeline_a_lift_would_reach():
+    result = readiness()
+
+    assert result.reach == 3
+    assert result.reach_if("evaluation", 4) == 4
+    assert result.reach_if("evaluation", 5) == 4, "governance still stops it at Ship"
+    assert result.reach_if("governance", 3) == 3, "evaluation still stops it at Verify"
+
+
+def test_reach_if_never_lowers_a_score():
+    result = readiness()
+
+    assert result.reach_if("platform", 1) == result.reach
+
+
+def test_highest_requirement_is_the_most_demanding_stage():
+    result = readiness()
+
+    assert result.highest_requirement("evaluation") == 4
+    assert result.highest_requirement("workflow") == 3
+    assert result.highest_requirement("product") == 2
+
+
+def test_a_lift_that_completes_the_pipeline_says_so():
+    scores = dict(SCORES, governance=5, learning=5, architecture=5, platform=5, product=5, workflow=5)
+    report = render_readiness(readiness(scores))
+
+    assert "completing the pipeline" in report
+    assert readiness(scores).reach_if("evaluation", 4) == len(UX_BUG_PIPELINE)
