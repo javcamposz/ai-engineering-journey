@@ -9,6 +9,11 @@
     "architecture": 3,
     "platform": 4,
     "governance": 2,
-    "learning": 3
+    "learning": 4
+  },
+  "evidence": {
+    "product": "docs/outcome-baseline-2026-04.md",
+    "platform": "platform/paved-road-adoption-2026-04.md",
+    "evaluation": "evals/task-set-v1-results-2026-04.md"
   }
 }

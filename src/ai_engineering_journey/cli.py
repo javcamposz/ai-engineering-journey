@@ -54,6 +54,10 @@ def _load(path: Path) -> dict:
     scores = payload.get("scores", {})
     if not isinstance(scores, dict):
         raise AssessmentError(["scores must be a JSON object mapping each capability to 1-5"])
+    if "evidence" in payload and not isinstance(payload["evidence"], dict):
+        raise AssessmentError(
+            ["evidence must be a JSON object mapping a capability to what its score rests on"]
+        )
     return payload
 
 
@@ -64,6 +68,7 @@ def _assessment(path: Path):
         _text(payload.get("context")),
         payload.get("scores", {}),
         _text(payload.get("assessed_on")) or None,
+        payload.get("evidence") or None,
     )
 
 

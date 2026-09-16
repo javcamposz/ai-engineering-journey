@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from statistics import mean
 from typing import Mapping
 
 MINIMUM_SCORE = 1
 MAXIMUM_SCORE = 5
+
+# Spreadsheet habits that mean "nothing behind this". Accepting one as a reference
+# would let a capability read as evidenced on a keystroke, which is the opposite of
+# making the assumption explicit.
+NULL_EVIDENCE = {"n/a", "n.a.", "na", "none", "nil", "tbd", "tbc", "pending", "unknown",
+                 "-", "--", "?", "see above", "as discussed"}
 
 # date.fromisoformat accepts the whole ISO 8601 set from Python 3.11, so "20260115" and
 # "2026-W03-4" parse there and are rejected on 3.10. Both are supported, so the shape is
@@ -94,6 +100,27 @@ class Assessment:
     average_stage: str
     limiting_pillars: tuple[str, ...]
     assessed_on: date | None = None
+    evidence: dict[str, str] = field(default_factory=dict)
+
+    def rests_on(self, pillar: str) -> str:
+        return self.evidence.get(pillar, "")
+
+    def is_evidenced(self, pillar: str) -> bool:
+        return bool(self.rests_on(pillar))
+
+    @property
+    def evidenced(self) -> tuple[str, ...]:
+        return tuple(pillar for pillar in PILLARS if self.is_evidenced(pillar))
+
+    @property
+    def unevidenced(self) -> tuple[str, ...]:
+        """Capabilities whose score is an opinion nobody has been asked to support."""
+        return tuple(pillar for pillar in PILLARS if not self.is_evidenced(pillar))
+
+    @property
+    def bottleneck_is_evidenced(self) -> bool:
+        """Whether the capability that sets the stage has anything behind its score."""
+        return all(self.is_evidenced(pillar) for pillar in self.bottleneck)
 
     @property
     def bottleneck(self) -> tuple[str, ...]:
@@ -163,6 +190,7 @@ def assess(
     context: str,
     scores: Mapping[str, object],
     assessed_on: str | None = None,
+    evidence: Mapping[str, object] | None = None,
 ) -> Assessment:
     problems: list[str] = []
     taken_on: date | None = None
@@ -199,6 +227,25 @@ def assess(
         else:
             validated[pillar] = value
 
+    supported: dict[str, str] = {}
+    for key in sorted(evidence or {}):
+        if key not in PILLARS:
+            problems.append(
+                f"evidence names {key}, which is not a capability; the seven are "
+                f"{', '.join(PILLARS)}"
+            )
+            continue
+        reference = str((evidence or {})[key]).strip()
+        if not reference:
+            problems.append(f"evidence for {key} is empty; omit it rather than leaving it blank")
+        elif reference.lower() in NULL_EVIDENCE:
+            problems.append(
+                f"evidence for {key} is {reference!r}; name what the score rests on or "
+                "leave it out"
+            )
+        else:
+            supported[key] = reference
+
     if problems:
         raise AssessmentError(problems)
 
@@ -228,6 +275,7 @@ def assess(
         average_stage=average_stage,
         limiting_pillars=limiting if maturity != average_stage else (),
         assessed_on=taken_on,
+        evidence=supported,
     )
 
 
@@ -257,11 +305,33 @@ def render_roadmap(result: Assessment) -> str:
     if result.context:
         lines.extend([result.context, ""])
 
-    lines.extend(["## Capability Baseline", "", "| Capability | Score | Practice reached |", "|---|---:|---|"])
+    lines.extend([
+        "## Capability Baseline",
+        "",
+        "| Capability | Score | Practice reached | What the score rests on |",
+        "|---|---:|---|---|",
+    ])
     lines.extend(
-        f"| {pillar.title()} | {result.scores[pillar]}/5 | {RUNGS[result.rung(pillar)].title()} |"
+        f"| {pillar.title()} | {result.scores[pillar]}/5 | {RUNGS[result.rung(pillar)].title()} | "
+        f"{result.rests_on(pillar) or 'nothing recorded'} |"
         for pillar in PILLARS
     )
+    if result.unevidenced:
+        missing = ", ".join(pillar.title() for pillar in result.unevidenced)
+        lines.extend([
+            "",
+            f"{len(result.unevidenced)} of {len(PILLARS)} scores record nothing behind them: "
+            f"{missing}. The scores are unchanged by that, because this roadmap is the output "
+            "and re-rating a capability for a reason the reader cannot see would be the wrong "
+            "correction. Read them as opinions until someone has been asked to support them.",
+        ])
+        if not result.bottleneck_is_evidenced:
+            holding = ", ".join(pillar.title() for pillar in result.bottleneck)
+            lines.append("")
+            lines.append(
+                f"The stage rests on {holding}, which records nothing. Everything below follows "
+                "from a number nobody has had to justify."
+            )
 
     lines.extend(["", "## Priority Constraints", ""])
     if result.is_uniform:
