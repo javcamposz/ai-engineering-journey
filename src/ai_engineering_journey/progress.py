@@ -29,6 +29,15 @@ class CapabilityMovement:
     rests_on: str = ""
 
     @property
+    def lost_its_evidence(self) -> bool:
+        """Rose while what supported the earlier score was removed.
+
+        A stronger signal than a score that was always bare: something was there, the
+        number went up, and the thing that was there is gone.
+        """
+        return self.delta > 0 and self.evidenced_before and not self.evidenced_after
+
+    @property
     def is_unevidenced_gain(self) -> bool:
         """Improved, with nothing recorded behind the number it improved to.
 
@@ -94,6 +103,10 @@ class Progress:
     def claimed(self) -> tuple[CapabilityMovement, ...]:
         """Priorities that moved and recorded nothing behind the new score."""
         return tuple(move for move in self.delivered if not move.evidenced_after)
+
+    @property
+    def gains_that_lost_evidence(self) -> tuple[CapabilityMovement, ...]:
+        return tuple(move for move in self.movements if move.lost_its_evidence)
 
     @property
     def unevidenced_gains(self) -> tuple[CapabilityMovement, ...]:
@@ -198,11 +211,15 @@ def render_progress(progress: Progress) -> str:
             + f", on {movement.rests_on}."
         )
     for movement in progress.claimed:
+        withdrawn = (
+            " What supported the earlier score is gone, so something was there and is not."
+            if movement.lost_its_evidence else ""
+        )
         lines.append(
             f"- **{movement.pillar.title()}** is recorded as {movement.before}/5 to "
             f"{movement.after}/5 with nothing behind the new score. That is a different "
             "number, not a demonstrated improvement, and it is the movement the plan was "
-            "graded on."
+            f"graded on.{withdrawn}"
         )
     for movement in progress.stalled:
         asked = ACTIONS[movement.pillar][movement.before_rung]
@@ -226,6 +243,10 @@ def render_progress(progress: Progress) -> str:
             f"- **{movement.pillar.title()}** also rose {movement.before}/5 to "
             f"{movement.after}/5 on nothing recorded. Nothing was asked of it, which makes an "
             "unsupported rise harder to account for than a supported one."
+            + (
+                " What supported the earlier score is gone too."
+                if movement.lost_its_evidence else ""
+            )
         )
 
     lines.extend(["", "## What It Cost", ""])

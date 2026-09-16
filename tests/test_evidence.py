@@ -99,8 +99,29 @@ def test_the_roadmap_does_not_re_rate_an_unevidenced_score():
 def test_the_roadmap_says_when_the_stage_rests_on_nothing():
     report = render_roadmap(built())
 
-    assert "The stage rests on Evaluation, Governance, which records nothing" in report
+    assert "The stage rests on Evaluation and Governance, and nothing is recorded behind either" in report
     assert "follows from a number nobody has had to justify" in report
+
+
+def test_a_partly_evidenced_bottleneck_names_only_the_bare_part():
+    """Listing the whole bottleneck said the opposite of the truth about the evidenced half."""
+    report = render_roadmap(built(evidence={"evaluation": "evals/task-set-v1.md"}))
+
+    assert "The stage rests on Evaluation and Governance, and Governance records nothing" in report
+    assert "Evaluation, Governance, which records nothing" not in report
+
+
+def test_a_single_bare_bottleneck_reads_in_the_singular():
+    scores = dict(SCORES, governance=3)
+    report = render_roadmap(built(scores))
+
+    assert "The stage rests on Evaluation, which records nothing" in report
+
+
+def test_a_fully_evidenced_bottleneck_makes_no_stage_complaint():
+    report = render_roadmap(built(evidence={"evaluation": "a.md", "governance": "b.md"}))
+
+    assert "The stage rests on" not in report
 
 
 def test_a_fully_evidenced_profile_makes_no_such_complaint():
@@ -234,3 +255,37 @@ def test_evidence_problems_are_reported_with_the_others(tmp_path, capsys):
     assert "product is 9" in err
     assert "evidence for evaluation is 'TBD'" in err
     assert "evidence names velocity" in err
+
+
+def test_a_rise_that_lost_its_evidence_is_stronger_than_one_that_never_had_any():
+    before = built(evidence={"evaluation": "evals/v1.md"}, on="2026-01-15")
+    after = built(dict(SCORES, evaluation=3), on="2026-04-20")
+    progress = compare(before, after)
+
+    movement = next(m for m in progress.movements if m.pillar == "evaluation")
+    assert movement.lost_its_evidence
+    assert [m.pillar for m in progress.gains_that_lost_evidence] == ["evaluation"]
+    assert "What supported the earlier score is gone, so something was there and is not." in (
+        render_progress(progress)
+    )
+
+
+def test_a_rise_that_never_had_evidence_makes_no_such_claim():
+    progress = compare(built(on="2026-01-15"), built(dict(SCORES, evaluation=3), on="2026-04-20"))
+
+    assert progress.gains_that_lost_evidence == ()
+    assert "What supported the earlier score is gone" not in render_progress(progress)
+
+
+def test_losing_evidence_without_rising_is_not_a_gain():
+    before = built(evidence={"evaluation": "evals/v1.md"}, on="2026-01-15")
+    after = built(on="2026-04-20")
+
+    assert compare(before, after).gains_that_lost_evidence == ()
+
+
+def test_an_unasked_rise_that_lost_its_evidence_says_so():
+    before = built(evidence={"learning": "notes.md"}, on="2026-01-15")
+    after = built(dict(SCORES, learning=4), on="2026-04-20")
+
+    assert "What supported the earlier score is gone too." in render_progress(compare(before, after))

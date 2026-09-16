@@ -119,8 +119,18 @@ class Assessment:
 
     @property
     def bottleneck_is_evidenced(self) -> bool:
-        """Whether the capability that sets the stage has anything behind its score."""
-        return all(self.is_evidenced(pillar) for pillar in self.bottleneck)
+        """Whether every capability setting the stage has something behind its score."""
+        return not self.unevidenced_bottleneck
+
+    @property
+    def unevidenced_bottleneck(self) -> tuple[str, ...]:
+        """The capabilities setting the stage that record nothing.
+
+        Named separately from the bottleneck itself, because a report that lists the whole
+        bottleneck as recording nothing says the opposite of the truth about any part of it
+        that does.
+        """
+        return tuple(pillar for pillar in self.bottleneck if not self.is_evidenced(pillar))
 
     @property
     def bottleneck(self) -> tuple[str, ...]:
@@ -286,6 +296,13 @@ PHASE_LABELS = (
 )
 
 
+def _and(pillars: tuple[str, ...]) -> str:
+    names = [pillar.title() for pillar in pillars]
+    if len(names) < 2:
+        return names[0] if names else ""
+    return f"{', '.join(names[:-1])} and {names[-1]}"
+
+
 def render_roadmap(result: Assessment) -> str:
     lines = [
         f"# AI Engineering Roadmap: {result.organization}",
@@ -326,11 +343,21 @@ def render_roadmap(result: Assessment) -> str:
             "correction. Read them as opinions until someone has been asked to support them.",
         ])
         if not result.bottleneck_is_evidenced:
-            holding = ", ".join(pillar.title() for pillar in result.bottleneck)
+            bare = result.unevidenced_bottleneck
+            setting = _and(result.bottleneck)
+            if len(bare) == len(result.bottleneck):
+                sentence = (
+                    f"The stage rests on {setting}, which records nothing."
+                    if len(bare) == 1
+                    else f"The stage rests on {setting}, and nothing is recorded behind "
+                         f"{'either' if len(bare) == 2 else 'any of them'}."
+                )
+            else:
+                verb = "records" if len(bare) == 1 else "record"
+                sentence = f"The stage rests on {setting}, and {_and(bare)} {verb} nothing."
             lines.append("")
             lines.append(
-                f"The stage rests on {holding}, which records nothing. Everything below follows "
-                "from a number nobody has had to justify."
+                f"{sentence} Everything below follows from a number nobody has had to justify."
             )
 
     lines.extend(["", "## Priority Constraints", ""])
