@@ -98,6 +98,9 @@ A capability that rose and *did* record something reads differently, and says wh
 
 > **Evaluation** moved 2/5 to 3/5, establish to standardise, on evals/task-set-v1-results-2026-04.md.
 
+A rise whose earlier score *was* supported, and whose support has since gone, is the stronger
+signal and says so: something was there, the number went up, and the thing that was there is not.
+
 A rise nobody asked for and nobody supported is named too:
 
 > **Learning** also rose 3/5 to 4/5 on nothing recorded. Nothing was asked of it, which makes an
