@@ -270,6 +270,11 @@ def render_readiness(readiness: Readiness, pipeline_name: str = "UX bug automati
                 "that blocks the stage above is worth more than anything spent on these.",
             ])
 
+    unevidenced_blockers = tuple(
+        pillar for pillar, _ in readiness.blocking_pillars
+        if not result.is_evidenced(pillar)
+    )
+
     lines.extend(["", "## What Blocks The Pipeline", ""])
     if readiness.blocking_pillars:
         lines.append("| Capability | Score | Stages blocked |")
@@ -295,6 +300,18 @@ def render_readiness(readiness: Readiness, pipeline_name: str = "UX bug automati
             f", where {after.describe_shortfalls()} stops it"
             if after is not None else ", completing the pipeline"
         )
+        if unevidenced_blockers:
+            names = ", ".join(pillar.title() for pillar in unevidenced_blockers)
+            verb, possessive = (
+                ("records", "its score") if len(unevidenced_blockers) == 1
+                else ("record", "their scores")
+            )
+            lines.extend([
+                "",
+                f"{names} {verb} nothing behind {possessive}, so the reach above rests on "
+                "numbers nobody has had to justify. Ask for the evidence before spending "
+                "against them.",
+            ])
         lines.extend([
             "",
             f"{worst.title()} at {result.scores[worst]}/5 blocks {count} of {total} stages, but "

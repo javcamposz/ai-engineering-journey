@@ -26,6 +26,12 @@ jobs:
       - run: ai-journey progress examples/org-assessment.json examples/org-assessment-q2.json --output progress.md
       - run: ai-journey readiness examples/org-assessment.json --output readiness.md
       - run: ai-journey readiness examples/org-assessment-q2.json --output /dev/null
+      - name: a placeholder must not count as evidence
+        run: |
+          printf '{"organization":"X","evidence":{"product":"TBD"},"scores":{"product":3,"workflow":3,"evaluation":3,"architecture":3,"platform":3,"governance":3,"learning":3}}' > /tmp/placeholder.json
+          if ai-journey assess /tmp/placeholder.json; then
+            echo 'expected a non-zero exit for placeholder evidence' && exit 1
+          fi
       - name: profiles in the wrong order must exit non-zero
         run: |
           if ai-journey progress examples/org-assessment-q2.json examples/org-assessment.json; then

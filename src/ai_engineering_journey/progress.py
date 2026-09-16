@@ -24,6 +24,18 @@ class CapabilityMovement:
     before_rung: int
     after_rung: int
     was_prioritised: bool
+    evidenced_before: bool = False
+    evidenced_after: bool = False
+    rests_on: str = ""
+
+    @property
+    def is_unevidenced_gain(self) -> bool:
+        """Improved, with nothing recorded behind the number it improved to.
+
+        A score that went up with nothing behind it is a different number, not a
+        demonstrated improvement, and the grading above would otherwise call it delivered.
+        """
+        return self.delta > 0 and not self.evidenced_after
 
     @property
     def delta(self) -> int:
@@ -72,6 +84,21 @@ class Progress:
     def delivered(self) -> tuple[CapabilityMovement, ...]:
         """Capabilities the earlier roadmap prioritised, that moved."""
         return self._where(was_prioritised=True, direction="improved")
+
+    @property
+    def demonstrated(self) -> tuple[CapabilityMovement, ...]:
+        """Priorities that moved and recorded something behind the new score."""
+        return tuple(move for move in self.delivered if move.evidenced_after)
+
+    @property
+    def claimed(self) -> tuple[CapabilityMovement, ...]:
+        """Priorities that moved and recorded nothing behind the new score."""
+        return tuple(move for move in self.delivered if not move.evidenced_after)
+
+    @property
+    def unevidenced_gains(self) -> tuple[CapabilityMovement, ...]:
+        """Every capability that rose on nothing, prioritised or not."""
+        return tuple(move for move in self.movements if move.is_unevidenced_gain)
 
     @property
     def stalled(self) -> tuple[CapabilityMovement, ...]:
@@ -123,6 +150,9 @@ def compare(before: Assessment, after: Assessment) -> Progress:
             before_rung=before.rung(pillar),
             after_rung=after.rung(pillar),
             was_prioritised=pillar in before.priorities,
+            evidenced_before=before.is_evidenced(pillar),
+            evidenced_after=after.is_evidenced(pillar),
+            rests_on=after.rests_on(pillar),
         )
         for pillar in PILLARS
     )
@@ -161,10 +191,18 @@ def render_progress(progress: Progress) -> str:
     assert before.priorities, "an assessment always names at least one constraint"
 
     lines.extend(["## Did The Plan Land?", ""])
-    for movement in progress.delivered:
+    for movement in progress.demonstrated:
         lines.append(
             f"- **{movement.pillar.title()}** moved {movement.before}/5 to {movement.after}/5"
-            + (f", {movement.practice}." if movement.rung_advanced else ", same practice rung.")
+            + (f", {movement.practice}" if movement.rung_advanced else ", same practice rung")
+            + f", on {movement.rests_on}."
+        )
+    for movement in progress.claimed:
+        lines.append(
+            f"- **{movement.pillar.title()}** is recorded as {movement.before}/5 to "
+            f"{movement.after}/5 with nothing behind the new score. That is a different "
+            "number, not a demonstrated improvement, and it is the movement the plan was "
+            "graded on."
         )
     for movement in progress.stalled:
         asked = ACTIONS[movement.pillar][movement.before_rung]
@@ -179,6 +217,16 @@ def render_progress(progress: Progress) -> str:
                 f"{movement.before}/5. The roadmap asked: {asked} Either the work did not "
                 "happen or the action was the wrong one; both are worth knowing."
             )
+
+    unasked = tuple(
+        movement for movement in progress.unevidenced_gains if not movement.was_prioritised
+    )
+    for movement in unasked:
+        lines.append(
+            f"- **{movement.pillar.title()}** also rose {movement.before}/5 to "
+            f"{movement.after}/5 on nothing recorded. Nothing was asked of it, which makes an "
+            "unsupported rise harder to account for than a supported one."
+        )
 
     lines.extend(["", "## What It Cost", ""])
     if progress.collateral:
@@ -213,14 +261,15 @@ def render_progress(progress: Progress) -> str:
         "",
         "## Movement",
         "",
-        "| Capability | Before | After | Change | Practice | Was a priority |",
-        "|---|---:|---:|---:|---|---|",
+        "| Capability | Before | After | Change | Practice | Rests on | Was a priority |",
+        "|---|---:|---:|---:|---|---|---|",
     ])
     for movement in sorted(progress.movements, key=lambda item: (item.delta, PILLARS.index(item.pillar))):
         change = f"{movement.delta:+d}" if movement.delta else "0"
         lines.append(
             f"| {movement.pillar.title()} | {movement.before}/5 | {movement.after}/5 | "
             f"{change} | {movement.practice} | "
+            f"{movement.rests_on or 'nothing recorded'} | "
             f"{'yes' if movement.was_prioritised else 'no'} |"
         )
 

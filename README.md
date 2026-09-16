@@ -65,6 +65,47 @@ the comparison reconstructs exactly what was asked for. Add `assessed_on` to a p
 interval is measured rather than guessed; profiles passed in the wrong order are refused rather than
 silently inverted.
 
+## What Do The Scores Rest On?
+
+This tool exists to make assumptions explicit, and an assessment was seven self-reported integers
+with nothing behind them. A profile can now record what each score rests on:
+
+```json
+"evidence": {
+  "evaluation": "evals/task-set-v1-results-2026-04.md",
+  "platform": "platform/paved-road-adoption-2026-04.md"
+}
+```
+
+The baseline table carries it, and a capability with nothing behind its score says so rather than
+looking the same as one with a named artefact. Placeholders that mean "nothing" — `N/A`, `TBD`,
+`see above` — are refused, because a capability reading as evidenced on a keystroke is the opposite
+of making the assumption explicit.
+
+**The scores are not adjusted by any of this.** The output of this tool is a roadmap, and re-rating a
+capability for a reason the reader cannot see would be the wrong correction. The report names what
+rests on nothing and leaves the judgement where it belongs.
+
+## A Rise Is Not An Improvement
+
+The sharpest case is `progress`. A capability recorded as 2/5 and then 4/5, with nothing behind either
+number, was graded as a delivered priority:
+
+> **Evaluation** is recorded as 2/5 to 3/5 with nothing behind the new score. That is a different
+> number, not a demonstrated improvement, and it is the movement the plan was graded on.
+
+A capability that rose and *did* record something reads differently, and says what:
+
+> **Evaluation** moved 2/5 to 3/5, establish to standardise, on evals/task-set-v1-results-2026-04.md.
+
+A rise nobody asked for and nobody supported is named too:
+
+> **Learning** also rose 3/5 to 4/5 on nothing recorded. Nothing was asked of it, which makes an
+> unsupported rise harder to account for than a supported one.
+
+`ai-journey readiness` says the same thing about reach: when the capability blocking the pipeline
+records nothing, the reach above it rests on a number nobody has had to justify.
+
 ## How Far Can You Actually Run A Real Workflow?
 
 A stage and a roadmap describe capability in the abstract. [The UX bug automation worked
@@ -171,7 +212,8 @@ See [the operating model](docs/operating-model.md) for maturity stages, delivery
 }
 ```
 
-An optional `assessed_on` records when the profile was taken, as `YYYY-MM-DD` and only that
+An optional `evidence` object records what each score rests on, and an optional `assessed_on`
+records when the profile was taken, as `YYYY-MM-DD` and only that
 shape. Python's own ISO parser widened in 3.11, so `20260115` would be read on 3.12 and
 rejected on 3.10; the shape is checked before parsing so both supported versions agree.
 

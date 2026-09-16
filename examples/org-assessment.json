@@ -10,5 +10,9 @@
     "governance": 2,
     "learning": 3
   },
-  "assessed_on": "2026-01-15"
+  "assessed_on": "2026-01-15",
+  "evidence": {
+    "product": "docs/outcome-baseline-2026-01.md",
+    "platform": "platform/paved-road-adoption-2026-01.md"
+  }
 }
